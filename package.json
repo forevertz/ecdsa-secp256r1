@@ -17,6 +17,7 @@
     "sign",
     "signing"
   ],
+  "repository": "https://github.com/ztrev/ecdsa-secp256r1.git",
   "dependencies": {
     "asn1.js": "^5.0.1",
     "bn.js": "^4.11.8"
