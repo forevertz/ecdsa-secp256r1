@@ -141,6 +141,13 @@ const ASN1 = {
  * SIGNING / VALIDATION                                                       *
  * ========================================================================== */
 
+function hash (object) {
+  return crypto
+    .createHash('sha256')
+    .update(typeof object === 'string' ? object : JSON.stringify(object))
+    .digest('base64')
+}
+
 ECDSA.prototype.sign = function sign (message, format = 'base64') {
   function removeDerEncoding (signatureBuffer) {
     const { r, s } = ASN1.EcdsaDerSig.decode(signatureBuffer, 'der')
@@ -152,6 +159,10 @@ ECDSA.prototype.sign = function sign (message, format = 'base64') {
   sign.write(message)
   sign.end()
   return removeDerEncoding(sign.sign(this.toPEM()))
+}
+
+ECDSA.prototype.hashAndSign = async function hashAndSign (message, format = 'base64') {
+  return this.sign(await hash(message), format)
 }
 
 ECDSA.prototype.verify = function verify (message, signature, format = 'base64') {
@@ -171,6 +182,10 @@ ECDSA.prototype.verify = function verify (message, signature, format = 'base64')
     signatureBuffer.length <= 2 * curveLength ? signatureToDer(signatureBuffer) : signatureBuffer,
     format
   )
+}
+
+ECDSA.prototype.hashAndVerify = async function hashAndVerify (message, format = 'base64') {
+  return this.verify(await hash(message), signature, format)
 }
 
 /* ========================================================================== *

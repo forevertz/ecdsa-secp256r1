@@ -52,6 +52,14 @@
     return buffer
   }
 
+  async function hash (object) {
+    const buffer = new TextEncoder('utf-8').encode(
+      typeof object === 'string' ? object : JSON.stringify(object)
+    )
+    const sha256 = await crypto.subtle.digest('SHA-256', buffer)
+    return toBase64(arrayBufferToString(sha256))
+  }
+
   /* ========================================================================== *
    * FACTORIES                                                                  *
    * ========================================================================== */
@@ -102,6 +110,12 @@
     return toBase64(arrayBufferToString(signature))
   }
 
+  ECDSA.prototype.hashAndSign = async function hashAndSign(
+    message /*: string | Object */
+  ) /*: Promise<string> */ {
+    return this.sign(await hash(message))
+  }
+
   ECDSA.prototype.verify = async function verify(
     message /*: string */,
     signature /*: string */
@@ -113,6 +127,13 @@
       signatureBuffer,
       stringToArrayBuffer(message)
     )
+  }
+
+  ECDSA.prototype.hashAndVerify = async function hashAndVerify(
+    message /*: string | Object */,
+    signature /*: string */
+  ) /*: Promise<Boolean> */ {
+    return this.verify(await hash(message), signature)
   }
 
   /* ========================================================================== *
