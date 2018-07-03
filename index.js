@@ -25,7 +25,7 @@ const curveLength = Math.ceil(256 / 8) /* Byte length for validation */
  * CLASS DEFINITION                                                           *
  * ========================================================================== */
 
-function ECDSA ({ x, y, d }) {
+function ECDSA({ x, y, d }) {
   if (x.length !== curveLength) throw new TypeError('Public EC Key point X of wrong length')
   if (y.length !== curveLength) throw new TypeError('Public EC Key point Y of wrong length')
 
@@ -44,7 +44,7 @@ function ECDSA ({ x, y, d }) {
  * FACTORIES                                                                  *
  * ========================================================================== */
 
-ECDSA.generateKey = function generateKeys () {
+ECDSA.generateKey = function generateKeys() {
   const ecdh = crypto.createECDH(curve)
   ecdh.generateKeys()
 
@@ -55,14 +55,14 @@ ECDSA.generateKey = function generateKeys () {
   })
 }
 
-ECDSA.fromJWK = function fromJWK (jwk) {
+ECDSA.fromJWK = function fromJWK(jwk) {
   return new ECDSA({
     x: Buffer.from(jwk.x, 'base64'),
     y: Buffer.from(jwk.y, 'base64')
   })
 }
 
-ECDSA.fromCompressedPublicKey = function fromCompressedPublicKey (compressedKey, format = 'base64') {
+ECDSA.fromCompressedPublicKey = function fromCompressedPublicKey(compressedKey, format = 'base64') {
   const key = crypto.ECDH.convertKey(compressedKey, curve, format, 'base64', 'uncompressed')
   const keyBuffer = Buffer.from(key, 'base64')
   return new ECDSA({
@@ -76,7 +76,7 @@ ECDSA.fromCompressedPublicKey = function fromCompressedPublicKey (compressedKey,
  * ========================================================================== */
 
 const ASN1 = {
-  Rfc5915: asn.define('Rfc5915Key', function () {
+  Rfc5915: asn.define('Rfc5915Key', function() {
     this.seq().obj(
       this.key('version').int(),
       this.key('privateKey').octstr(),
@@ -95,7 +95,7 @@ const ASN1 = {
         .bitstr()
     )
   }),
-  Pkcs8: asn.define('Pkcs8Key', function () {
+  Pkcs8: asn.define('Pkcs8Key', function() {
     this.seq().obj(
       this.key('version').int(),
       this.key('algorithmIdentifier')
@@ -114,7 +114,7 @@ const ASN1 = {
       this.key('privateKey').octstr()
     )
   }),
-  Spki: asn.define('SpkiKey', function () {
+  Spki: asn.define('SpkiKey', function() {
     this.seq().obj(
       this.key('algorithmIdentifier')
         .seq()
@@ -132,7 +132,7 @@ const ASN1 = {
       this.key('publicKey').bitstr()
     )
   }),
-  EcdsaDerSig: asn.define('ECPrivateKey', function () {
+  EcdsaDerSig: asn.define('ECPrivateKey', function() {
     return this.seq().obj(this.key('r').int(), this.key('s').int())
   })
 }
@@ -141,15 +141,15 @@ const ASN1 = {
  * SIGNING / VALIDATION                                                       *
  * ========================================================================== */
 
-function hash (object) {
+function hash(object) {
   return crypto
     .createHash('sha256')
     .update(typeof object === 'string' ? object : JSON.stringify(object))
     .digest('base64')
 }
 
-ECDSA.prototype.sign = function sign (message, format = 'base64') {
-  function removeDerEncoding (signatureBuffer) {
+ECDSA.prototype.sign = function sign(message, format = 'base64') {
+  function removeDerEncoding(signatureBuffer) {
     const { r, s } = ASN1.EcdsaDerSig.decode(signatureBuffer, 'der')
     return Buffer.concat([r.toBuffer(), s.toBuffer()]).toString(format)
   }
@@ -161,12 +161,12 @@ ECDSA.prototype.sign = function sign (message, format = 'base64') {
   return removeDerEncoding(sign.sign(this.toPEM()))
 }
 
-ECDSA.prototype.hashAndSign = async function hashAndSign (message, format = 'base64') {
+ECDSA.prototype.hashAndSign = async function hashAndSign(message, format = 'base64') {
   return this.sign(await hash(message), format)
 }
 
-ECDSA.prototype.verify = function verify (message, signature, format = 'base64') {
-  function signatureToDer (signatureBuffer) {
+ECDSA.prototype.verify = function verify(message, signature, format = 'base64') {
+  function signatureToDer(signatureBuffer) {
     const r = new BN(signatureBuffer.slice(0, curveLength).toString('hex'), 16, 'be')
     const s = new BN(signatureBuffer.slice(curveLength).toString('hex'), 16, 'be')
     return ASN1.EcdsaDerSig.encode({ r, s }, 'der')
@@ -184,7 +184,10 @@ ECDSA.prototype.verify = function verify (message, signature, format = 'base64')
   )
 }
 
-ECDSA.prototype.hashAndVerify = async function hashAndVerify (message, format = 'base64') {
+ECDSA.prototype.hashAndVerify = async function hashAndVerify(
+  message,
+  format = 'base64'
+) {
   return this.verify(await hash(message), signature, format)
 }
 
@@ -192,16 +195,16 @@ ECDSA.prototype.hashAndVerify = async function hashAndVerify (message, format = 
  * CONVERSION                                                                 *
  * ========================================================================== */
 
-ECDSA.prototype.asPublic = function asPublic () {
+ECDSA.prototype.asPublic = function asPublic() {
   if (!this.isPrivate) return this
   return new ECDSA({ x: this.x, y: this.y })
 }
 
-ECDSA.prototype.toCompressedPublicKey = function toCompressedPublicKey (format = 'base64') {
+ECDSA.prototype.toCompressedPublicKey = function toCompressedPublicKey(format = 'base64') {
   return crypto.ECDH.convertKey(this.publicCodePoint, curve, 'base64', format, 'compressed')
 }
 
-ECDSA.prototype.toBuffer = function toBuffer (format) {
+ECDSA.prototype.toBuffer = function toBuffer(format) {
   if (format === 'pem') {
     return Buffer.from(this.toPEM(), 'ascii')
   } else if (this.isPrivate) {
@@ -243,7 +246,7 @@ ECDSA.prototype.toBuffer = function toBuffer (format) {
   }
 }
 
-ECDSA.prototype.toPEM = function toPEM () {
+ECDSA.prototype.toPEM = function toPEM() {
   return this.isPrivate
     ? '-----BEGIN PRIVATE KEY-----\n' +
         this.toBuffer('pkcs8')
@@ -259,8 +262,8 @@ ECDSA.prototype.toPEM = function toPEM () {
         '\n-----END PUBLIC KEY-----\n'
 }
 
-ECDSA.prototype.toJWK = function toJWK () {
-  function urlsafe (buffer) {
+ECDSA.prototype.toJWK = function toJWK() {
+  function urlsafe(buffer) {
     return buffer
       .toString('base64')
       .replace(/\+/g, '-')
