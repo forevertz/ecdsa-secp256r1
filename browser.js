@@ -44,18 +44,58 @@
   }
 
   function stringToArrayBuffer(string) {
-    const buffer = new ArrayBuffer(string.length)
-    const bufferView = new Uint8Array(buffer)
-    for (let i = 0, strLen = string.length; i < strLen; i++) {
-      bufferView[i] = string.charCodeAt(i)
+    if (window.TextEncoder) {
+      return new TextEncoder('utf-8').encode(string)
+    } else {
+      // TextEncoder polyfill (https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder)
+      const stringLength = string.length
+      const buffer = new Uint8Array(stringLength * 3)
+      let resPos = -1
+      for (let point = 0, nextcode = 0, i = 0; i !== stringLength; ) {
+        ;(point = string.charCodeAt(i)), (i += 1)
+        if (point >= 0xd800 && point <= 0xdbff) {
+          if (i === stringLength) {
+            buffer[(resPos += 1)] = 0xef /*0b11101111*/
+            buffer[(resPos += 1)] = 0xbf /*0b10111111*/
+            buffer[(resPos += 1)] = 0xbd /*0b10111101*/
+            break
+          }
+          nextcode = string.charCodeAt(i)
+          if (nextcode >= 0xdc00 && nextcode <= 0xdfff) {
+            point = (point - 0xd800) * 0x400 + nextcode - 0xdc00 + 0x10000
+            i += 1
+            if (point > 0xffff) {
+              buffer[(resPos += 1)] = (0x1e /*0b11110*/ << 3) | (point >>> 18)
+              buffer[(resPos += 1)] = (0x2 /*0b10*/ << 6) | ((point >>> 12) & 0x3f) /*0b00111111*/
+              buffer[(resPos += 1)] = (0x2 /*0b10*/ << 6) | ((point >>> 6) & 0x3f) /*0b00111111*/
+              buffer[(resPos += 1)] = (0x2 /*0b10*/ << 6) | (point & 0x3f) /*0b00111111*/
+              continue
+            }
+          } else {
+            buffer[(resPos += 1)] = 0xef /*0b11101111*/
+            buffer[(resPos += 1)] = 0xbf /*0b10111111*/
+            buffer[(resPos += 1)] = 0xbd /*0b10111101*/
+            continue
+          }
+        }
+        if (point <= 0x007f) {
+          buffer[(resPos += 1)] = (0x0 /*0b0*/ << 7) | point
+        } else if (point <= 0x07ff) {
+          buffer[(resPos += 1)] = (0x6 /*0b110*/ << 5) | (point >>> 6)
+          buffer[(resPos += 1)] = (0x2 /*0b10*/ << 6) | (point & 0x3f) /*0b00111111*/
+        } else {
+          buffer[(resPos += 1)] = (0xe /*0b1110*/ << 4) | (point >>> 12)
+          buffer[(resPos += 1)] = (0x2 /*0b10*/ << 6) | ((point >>> 6) & 0x3f) /*0b00111111*/
+          buffer[(resPos += 1)] = (0x2 /*0b10*/ << 6) | (point & 0x3f) /*0b00111111*/
+        }
+      }
+      buffer = new Uint8Array(buffer.buffer.slice(0, resPos + 1))
+      return buffer
     }
-    return buffer
   }
 
-  async function hash (object) {
-    const buffer = new TextEncoder('utf-8').encode(
-      typeof object === 'string' ? object : JSON.stringify(object)
-    )
+  async function hash(object) {
+    const buffer = stringToArrayBuffer(typeof object === 'string' ? object : JSON.stringify(object))
     const sha256 = await crypto.subtle.digest('SHA-256', buffer)
     return toBase64(arrayBufferToString(sha256))
   }
