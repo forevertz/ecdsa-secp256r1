@@ -186,6 +186,7 @@ ECDSA.prototype.verify = function verify(message, signature, format = 'base64') 
 
 ECDSA.prototype.hashAndVerify = async function hashAndVerify(
   message,
+  signature,
   format = 'base64'
 ) {
   return this.verify(await hash(message), signature, format)
