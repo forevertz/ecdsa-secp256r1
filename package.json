@@ -3,7 +3,7 @@
   "version": "1.2.1",
   "description": "NIST P-256 Elliptic Curve Cryptography for Node and the Browsers",
   "main": "index.js",
-  "author": "David Brown",
+  "author": "Improvertz",
   "license": "MIT",
   "keywords": [
     "crypto",
@@ -17,7 +17,7 @@
     "sign",
     "signing"
   ],
-  "repository": "https://github.com/ztrev/ecdsa-secp256r1.git",
+  "repository": "https://github.com/forevertz/ecdsa-secp256r1.git",
   "dependencies": {
     "asn1.js": "^5.0.1",
     "bn.js": "^4.11.8"

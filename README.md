@@ -1,7 +1,7 @@
 # ECDSA secp256r1
 
 <a href="https://www.npmjs.com/package/ecdsa-secp256r1"><img alt="npm-status" src="https://img.shields.io/npm/v/ecdsa-secp256r1.svg?style=flat" /></a>
-<a href="https://github.com/ztrev/ecdsa-secp256r1/blob/master/LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT_License-blue.svg?style=flat" /></a>
+<a href="https://github.com/forevertz/ecdsa-secp256r1/blob/master/LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT_License-blue.svg?style=flat" /></a>
 
 ## Getting Started
 
