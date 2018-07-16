@@ -58,7 +58,8 @@ ECDSA.generateKey = function generateKeys() {
 ECDSA.fromJWK = function fromJWK(jwk) {
   return new ECDSA({
     x: Buffer.from(jwk.x, 'base64'),
-    y: Buffer.from(jwk.y, 'base64')
+    y: Buffer.from(jwk.y, 'base64'),
+    d: jwk.d ? Buffer.from(jwk.d, 'base64') : false
   })
 }
 
