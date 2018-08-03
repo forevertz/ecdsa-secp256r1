@@ -51,13 +51,13 @@
       const stringLength = string.length
       const buffer = new Uint8Array(stringLength * 3)
       let resPos = -1
-      for (let point = 0, nextcode = 0, i = 0; i !== stringLength; ) {
+      for (let point = 0, nextcode = 0, i = 0; i !== stringLength;) {
         ;(point = string.charCodeAt(i)), (i += 1)
         if (point >= 0xd800 && point <= 0xdbff) {
           if (i === stringLength) {
-            buffer[(resPos += 1)] = 0xef /*0b11101111*/
-            buffer[(resPos += 1)] = 0xbf /*0b10111111*/
-            buffer[(resPos += 1)] = 0xbd /*0b10111101*/
+            buffer[(resPos += 1)] = 0xef /* 0b11101111 */
+            buffer[(resPos += 1)] = 0xbf /* 0b10111111 */
+            buffer[(resPos += 1)] = 0xbd /* 0b10111101 */
             break
           }
           nextcode = string.charCodeAt(i)
@@ -65,28 +65,28 @@
             point = (point - 0xd800) * 0x400 + nextcode - 0xdc00 + 0x10000
             i += 1
             if (point > 0xffff) {
-              buffer[(resPos += 1)] = (0x1e /*0b11110*/ << 3) | (point >>> 18)
-              buffer[(resPos += 1)] = (0x2 /*0b10*/ << 6) | ((point >>> 12) & 0x3f) /*0b00111111*/
-              buffer[(resPos += 1)] = (0x2 /*0b10*/ << 6) | ((point >>> 6) & 0x3f) /*0b00111111*/
-              buffer[(resPos += 1)] = (0x2 /*0b10*/ << 6) | (point & 0x3f) /*0b00111111*/
+              buffer[(resPos += 1)] = (0x1e /* 0b11110 */ << 3) | (point >>> 18)
+              buffer[(resPos += 1)] = (0x2 /* 0b10 */ << 6) | ((point >>> 12) & 0x3f) /* 0b00111111 */
+              buffer[(resPos += 1)] = (0x2 /* 0b10 */ << 6) | ((point >>> 6) & 0x3f) /* 0b00111111 */
+              buffer[(resPos += 1)] = (0x2 /* 0b10 */ << 6) | (point & 0x3f) /* 0b00111111 */
               continue
             }
           } else {
-            buffer[(resPos += 1)] = 0xef /*0b11101111*/
-            buffer[(resPos += 1)] = 0xbf /*0b10111111*/
-            buffer[(resPos += 1)] = 0xbd /*0b10111101*/
+            buffer[(resPos += 1)] = 0xef /* 0b11101111 */
+            buffer[(resPos += 1)] = 0xbf /* 0b10111111 */
+            buffer[(resPos += 1)] = 0xbd /* 0b10111101 */
             continue
           }
         }
         if (point <= 0x007f) {
-          buffer[(resPos += 1)] = (0x0 /*0b0*/ << 7) | point
+          buffer[(resPos += 1)] = (0x0 /* 0b0 */ << 7) | point
         } else if (point <= 0x07ff) {
-          buffer[(resPos += 1)] = (0x6 /*0b110*/ << 5) | (point >>> 6)
-          buffer[(resPos += 1)] = (0x2 /*0b10*/ << 6) | (point & 0x3f) /*0b00111111*/
+          buffer[(resPos += 1)] = (0x6 /* 0b110 */ << 5) | (point >>> 6)
+          buffer[(resPos += 1)] = (0x2 /* 0b10 */ << 6) | (point & 0x3f) /* 0b00111111 */
         } else {
-          buffer[(resPos += 1)] = (0xe /*0b1110*/ << 4) | (point >>> 12)
-          buffer[(resPos += 1)] = (0x2 /*0b10*/ << 6) | ((point >>> 6) & 0x3f) /*0b00111111*/
-          buffer[(resPos += 1)] = (0x2 /*0b10*/ << 6) | (point & 0x3f) /*0b00111111*/
+          buffer[(resPos += 1)] = (0xe /* 0b1110 */ << 4) | (point >>> 12)
+          buffer[(resPos += 1)] = (0x2 /* 0b10 */ << 6) | ((point >>> 6) & 0x3f) /* 0b00111111 */
+          buffer[(resPos += 1)] = (0x2 /* 0b10 */ << 6) | (point & 0x3f) /* 0b00111111 */
         }
       }
       buffer = new Uint8Array(buffer.buffer.slice(0, resPos + 1))
