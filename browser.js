@@ -113,7 +113,7 @@
   }
 
   ECDSA.fromJWK = async (jwk /*: Object */) => /*: Promise<ECDSA> */ {
-    const { d, ...rest } = jwk
+    const { d, key_ops, ...rest } = jwk
     const keys = {
       publicKey: await crypto.subtle.importKey('jwk', rest, ALGO, true, ['verify'])
     }
@@ -186,7 +186,9 @@
   }
 
   ECDSA.prototype.toJWK = async function toJWK() /*: Promise<Object> */ {
-    return crypto.subtle.exportKey('jwk', this.privateKey ? this.privateKey : this.publicKey)
+    const key = this.privateKey ? this.privateKey : this.publicKey
+    const { kty, crv, d, x, y } = await crypto.subtle.exportKey('jwk', key)
+    return { kty, crv, d, x, y }
   }
 
   ECDSA.prototype.toBase64PrivateKey = async function toBase64PrivateKey() /*: Promise<string> */ {
