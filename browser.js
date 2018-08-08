@@ -15,16 +15,16 @@
  * ========================================================================== */
 
 ;(function() {
-  const ALGO = { name: 'ECDSA', namedCurve: 'P-256' }
-  const SIGN_ALGO = { name: 'ECDSA', hash: { name: 'SHA-256' } }
+  var ALGO = { name: 'ECDSA', namedCurve: 'P-256' }
+  var SIGN_ALGO = { name: 'ECDSA', hash: { name: 'SHA-256' } }
 
   /* ========================================================================== *
    * CLASS DEFINITION                                                           *
    * ========================================================================== */
 
-  function ECDSA({ publicKey /*: CryptoKey */, privateKey /*: ?CryptoKey */ }) {
-    if (publicKey) this.publicKey = publicKey
-    if (privateKey) this.privateKey = privateKey
+  function ECDSA(keys /* { publicKey: CryptoKey, privateKey?: CryptoKey } */) {
+    if (keys.publicKey) this.publicKey = keys.publicKey
+    if (keys.privateKey) this.privateKey = keys.privateKey
   }
 
   /* ========================================================================== *
@@ -44,14 +44,14 @@
   }
 
   function stringToArrayBuffer(string) {
-    if (window.TextEncoder) {
+    if (window.TextEncoder) { // Chrome, Firefox, Opera
       return new TextEncoder('utf-8').encode(string)
     } else {
       // TextEncoder polyfill (https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder)
-      const stringLength = string.length
-      const buffer = new Uint8Array(stringLength * 3)
-      let resPos = -1
-      for (let point = 0, nextcode = 0, i = 0; i !== stringLength;) {
+      var stringLength = string.length
+      var buffer = new Uint8Array(stringLength * 3)
+      var resPos = -1
+      for (var point = 0, nextcode = 0, i = 0; i !== stringLength;) {
         ;(point = string.charCodeAt(i)), (i += 1)
         if (point >= 0xd800 && point <= 0xdbff) {
           if (i === stringLength) {
@@ -94,46 +94,58 @@
     }
   }
 
-  async function hash(object) {
-    const buffer = stringToArrayBuffer(typeof object === 'string' ? object : JSON.stringify(object))
-    const sha256 = await crypto.subtle.digest('SHA-256', buffer)
-    return toBase64(arrayBufferToString(sha256))
+  function hash(object) {
+    return new Promise(resolve => {
+      var buffer = stringToArrayBuffer(typeof object === 'string' ? object : JSON.stringify(object))
+      crypto.subtle.digest('SHA-256', buffer).then(sha256 => {
+        resolve(toBase64(arrayBufferToString(sha256)))
+      })
+    })
   }
 
   /* ========================================================================== *
    * FACTORIES                                                                  *
    * ========================================================================== */
 
-  ECDSA.generateKey = async () => /*: Promise<ECDSA> */ {
-    const { privateKey, publicKey } = await crypto.subtle.generateKey(ALGO, true, [
-      'sign',
-      'verify'
-    ])
-    return new ECDSA({ privateKey, publicKey })
-  }
-
-  ECDSA.fromJWK = async (jwk /*: Object */) => /*: Promise<ECDSA> */ {
-    const { d, key_ops, ...rest } = jwk
-    const keys = {
-      publicKey: await crypto.subtle.importKey('jwk', rest, ALGO, true, ['verify'])
-    }
-    if (d) {
-      keys.privateKey = await crypto.subtle.importKey('jwk', jwk, ALGO, true, ['sign'])
-    }
-    return new ECDSA(keys)
-  }
-
-  ECDSA.fromCompressedPublicKey = async (base64Key /*: string */) => /*: Promise<ECDSA> */ {
-    const rawCompressedKey = stringToArrayBuffer(fromBase64(base64Key))
-    return new ECDSA({
-      publicKey: await crypto.subtle.importKey('raw', rawCompressedKey, ALGO, true, ['verify'])
+  ECDSA.generateKey = () => /*: Promise<ECDSA> */ {
+    return new Promise(resolve => {
+      crypto.subtle.generateKey(ALGO, true, ['sign', 'verify']).then((key) => {
+        resolve(new ECDSA(key))
+      })
     })
   }
 
-  ECDSA.fromBase64PrivateKey = async (base64Key /*: string */) => /*: Promise<ECDSA> */ {
-    const pkcs8Key = stringToArrayBuffer(fromBase64(base64Key))
-    return new ECDSA({
-      privateKey: await crypto.subtle.importKey('pkcs8', pkcs8Key, ALGO, true, ['sign'])
+  ECDSA.fromJWK = (jwk /*: Object */) => /*: Promise<ECDSA> */ {
+    return new Promise(resolve => {
+      var publicJwk = { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y }
+      var keyPromises = [
+        crypto.subtle.importKey('jwk', publicJwk, ALGO, true, ['verify'])
+      ]
+      if (jwk.d) {
+        var privateJwk = { kty: jwk.kty, crv: jwk.crv, d: jwk.d, x: jwk.x, y: jwk.y }
+        keyPromises.push(crypto.subtle.importKey('jwk', privateJwk, ALGO, true, ['sign']))
+      }
+      Promise.all(keyPromises).then(keys => {
+        resolve(new ECDSA({ publicKey: keys[0], privateKey: keys[1] }))
+      })
+    })
+  }
+
+  ECDSA.fromCompressedPublicKey = (base64Key /*: string */) => /*: Promise<ECDSA> */ {
+    return new Promise(resolve => {
+      var rawCompressedKey = stringToArrayBuffer(fromBase64(base64Key))
+      crypto.subtle.importKey('raw', rawCompressedKey, ALGO, true, ['verify']).then((key) => {
+        resolve(new ECDSA({ publicKey: key }))
+      })
+    })
+  }
+
+  ECDSA.fromBase64PrivateKey = (base64Key /*: string */) => /*: Promise<ECDSA> */ {
+    return new Promise(resolve => {
+      var pkcs8Key = stringToArrayBuffer(fromBase64(base64Key))
+      crypto.subtle.importKey('pkcs8', pkcs8Key, ALGO, true, ['sign']).then((key) => {
+        resolve(new ECDSA({ privateKey: key }))
+      })
     })
   }
 
@@ -141,26 +153,24 @@
    * SIGNING / VALIDATION                                                       *
    * ========================================================================== */
 
-  ECDSA.prototype.sign = async function sign(message /*: string */) /*: Promise<string> */ {
-    const signature = await crypto.subtle.sign(
-      SIGN_ALGO,
-      this.privateKey,
-      stringToArrayBuffer(message)
-    )
-    return toBase64(arrayBufferToString(signature))
+  ECDSA.prototype.sign = function sign(message /*: string */) /*: Promise<string> */ {
+    return new Promise(resolve => {
+      crypto.subtle.sign(SIGN_ALGO, this.privateKey, stringToArrayBuffer(message)).then(signature => {
+        resolve(toBase64(arrayBufferToString(signature)))
+      })
+    })
   }
 
-  ECDSA.prototype.hashAndSign = async function hashAndSign(
-    message /*: string | Object */
-  ) /*: Promise<string> */ {
-    return this.sign(await hash(message))
+  ECDSA.prototype.hashAndSign = function hashAndSign(message /*: string | Object */) /*: Promise<string> */ {
+    return new Promise(resolve => {
+      hash(message).then(hashed => {
+        resolve(this.sign(hashed))
+      })
+    })
   }
 
-  ECDSA.prototype.verify = async function verify(
-    message /*: string */,
-    signature /*: string */
-  ) /*: Promise<Boolean> */ {
-    const signatureBuffer = stringToArrayBuffer(fromBase64(signature))
+  ECDSA.prototype.verify = function verify(message /*: string */, signature /*: string */) /*: Promise<Boolean> */ {
+    var signatureBuffer = stringToArrayBuffer(fromBase64(signature))
     return crypto.subtle.verify(
       SIGN_ALGO,
       this.publicKey,
@@ -169,11 +179,12 @@
     )
   }
 
-  ECDSA.prototype.hashAndVerify = async function hashAndVerify(
-    message /*: string | Object */,
-    signature /*: string */
-  ) /*: Promise<Boolean> */ {
-    return this.verify(await hash(message), signature)
+  ECDSA.prototype.hashAndVerify = function hashAndVerify(message /*: string | Object */, signature /*: string */) /*: Promise<Boolean> */ {
+    return new Promise(resolve => {
+      hash(message).then(hashed => {
+        resolve(this.verify(hashed , signature))
+      })
+    })
   }
 
   /* ========================================================================== *
@@ -185,30 +196,44 @@
     return new ECDSA({ publicKey: this.publicKey })
   }
 
-  ECDSA.prototype.toJWK = async function toJWK() /*: Promise<Object> */ {
-    const key = this.privateKey ? this.privateKey : this.publicKey
-    const { kty, crv, d, x, y } = await crypto.subtle.exportKey('jwk', key)
-    return { kty, crv, d, x, y }
+  ECDSA.prototype.toJWK = function toJWK() /*: Promise<Object> */ {
+    return new Promise(resolve => {
+      var key = this.privateKey ? this.privateKey : this.publicKey
+      crypto.subtle.exportKey('jwk', key).then(jwk => {
+        resolve({ kty: jwk.kty, crv: jwk.crv, d: jwk.d, x: jwk.x, y: jwk.y })
+      })
+    })
   }
 
-  ECDSA.prototype.toBase64PrivateKey = async function toBase64PrivateKey() /*: Promise<string> */ {
-    const key = await crypto.subtle.exportKey('pkcs8', this.privateKey)
-    return toBase64(arrayBufferToString(key))
+  ECDSA.prototype.toBase64PrivateKey = function toBase64PrivateKey() /*: Promise<string> */ {
+    return new Promise(resolve => {
+      crypto.subtle.exportKey('pkcs8', this.privateKey).then(key => {
+        resolve(toBase64(arrayBufferToString(key)))
+      })
+    })
   }
 
-  ECDSA.prototype.toCompressedPublicKey = async function toCompressedPublicKey() /*: Promise<Uint8Array> */ {
-    const rawKey = new Uint8Array(await crypto.subtle.exportKey('raw', this.publicKey))
-    const x = new Uint8Array(rawKey.slice(1, rawKey.length / 2 + 1))
-    const y = new Uint8Array(rawKey.slice(rawKey.length / 2 + 1))
-    const compressedKey = new Uint8Array(x.length + 1)
-    compressedKey[0] = 2 + (y[y.length - 1] & 1)
-    compressedKey.set(x, 1)
-    return compressedKey
+  ECDSA.prototype.toCompressedPublicKey = function toCompressedPublicKey() /*: Promise<Uint8Array> */ {
+    return new Promise(resolve => {
+      crypto.subtle.exportKey('raw', this.publicKey).then(key => {
+        var rawKey = new Uint8Array(key)
+        var x = new Uint8Array(rawKey.slice(1, rawKey.length / 2 + 1))
+        var y = new Uint8Array(rawKey.slice(rawKey.length / 2 + 1))
+        var compressedKey = new Uint8Array(x.length + 1)
+        compressedKey[0] = 2 + (y[y.length - 1] & 1)
+        compressedKey.set(x, 1)
+        resolve(compressedKey)
+      })
+    })
+
   }
 
-  ECDSA.prototype.toBase64CompressedPublicKey = async function toBase64CompressedPublicKey() /*: Promise<string> */ {
-    const compressedKey = await this.toCompressedPublicKey()
-    return toBase64(arrayBufferToString(compressedKey))
+  ECDSA.prototype.toBase64CompressedPublicKey = function toBase64CompressedPublicKey() /*: Promise<string> */ {
+    return new Promise(resolve => {
+      this.toCompressedPublicKey().then(compressedKey => {
+        resolve(toBase64(arrayBufferToString(compressedKey)))
+      })
+    })
   }
 
   /* ========================================================================== *

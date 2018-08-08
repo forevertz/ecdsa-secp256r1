@@ -18,6 +18,10 @@
     "signing"
   ],
   "repository": "https://github.com/forevertz/ecdsa-secp256r1.git",
+  "files": [
+    "index.js",
+    "browser.js"
+  ],
   "dependencies": {
     "asn1.js": "^5.0.1",
     "bn.js": "^4.11.8"
