@@ -1,6 +1,6 @@
 {
   "name": "ecdsa-secp256r1",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "NIST P-256 Elliptic Curve Cryptography for Node and the Browsers",
   "main": "index.js",
   "author": "Improvertz",
