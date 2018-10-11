@@ -176,7 +176,7 @@ ECDSA.prototype.verify = function verify(message, signature, format = 'base64') 
   const verify = crypto.createVerify('RSA-SHA256') // RSA works with EC keys, too
   verify.write(message)
   verify.end()
-  const key = this.isPrivate ? this.asPublicECDSA() : this
+  const key = this.isPrivate ? this.asPublic() : this
   const signatureBuffer = Buffer.from(signature, format)
   return verify.verify(
     key.toPEM(),
